@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RETRO TAPES - Locadora 90s</title>
+    <style>
+        :root {
+            --neon-pink: #ff2a6d;
+            --neon-blue: #05d9e8;
+            --dark-bg: #0d0221;
+            --wood: #4a2f1d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Courier New', Courier, monospace;
+            touch-action: none;
+        }
+
+        canvas { display: block; }
+
+        /* === TELA DE CARREGAMENTO === */
+        #loadingScreen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 1s ease;
+        }
+        
+        .vhs-text {
+            color: #fff;
+            font-size: 2rem;
+            text-shadow: 2px 2px 0 var(--neon-pink), -2px -2px 0 var(--neon-blue);
+            animation: glitch 0.3s infinite;
+        }
+
+        .loading-bar {
+            width: 80%;
+            max-width: 400px;
+            height: 10px;
+            background: #222;
+            margin-top: 20px;
+            border: 1px solid #444;
+            overflow: hidden;
+        }
+
+        .loading-fill {
+            width: 0%;
+            height: 100%;
+            background: var(--neon-blue);
+            box-shadow: 0 0 10px var(--neon-blue);
+            animation: load 2s ease forwards;
+        }
+
+        @keyframes load { to { width: 100%; } }
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+
+        /* === AVISO LANDSCAPE === */
+        #rotateWarning {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 1100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: #fff;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .rotate-icon {
+            width: 60px;
+            height: 100px;
+            border: 3px solid #fff;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            animation: rotate 1.5s infinite;
+        }
+
+        @keyframes rotate {
+            0%, 100% { transform: rotate(0); }
+            50% { transform: rotate(90deg); }
+        }
+
+        @media (max-width: 820px) and (orientation: portrait) {
+            #rotateWarning { display: flex; }
+        }
+
+        /* === HUD 3D === */
+        #hud {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+        }
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px; height: 4px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+        }
+
+        #interactionPrompt {
+            position: absolute;
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: var(--neon-blue);
+            padding: 10px 20px;
+            border: 1px solid var(--neon-blue);
+            display: none;
+            font-size: 0.9rem;
+            text-align: center;
+            max-width: 80%;
+            box-shadow: 0 0 15px rgba(5, 217, 232, 0.3);
+        }
+
+        /* === DISPLAY DE MOEDAS === */
+        #coinDisplay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.6);
+            color: #ffd700;
+            padding: 8px 15px;
+            border: 1px solid #ffd700;
+            border-radius: 4px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 150;
+        }
+
+        /* === BOTÃO TELA CHEIA === */
+        #fullscreenBtn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-family: inherit;
+            font-size: 1.2rem;
+            pointer-events: auto;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            z-index: 150;
+        }
+
+        /* === CONTROLES A PÉ (MOBILE) === */
+        #joystickArea {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            pointer-events: auto;
+        }
+
+        #joystickKnob {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px;
+            height: 50px;
+            background: rgba(5, 217, 232, 0.4);
+            border: 2px solid var(--neon-blue);
+            border-radius: 50%;
+        }
+
+        #interactBtn {
+            position: absolute;
+            bottom: 40px;
+            right: 30px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 42, 109, 0.3);
+            border: 2px solid var(--neon-pink);
+            border-radius: 50%;
+            color: #fff;
+            font-family: inherit;
+            font-size: 1.5rem;
+            pointer-events: auto;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .touch-btn {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            border-radius: 50%;
+            font-family: inherit;
+            font-size: 1.5rem;
+            font-weight: bold;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+
+        #btnJump { bottom: 130px; right: 30px; }
+        #btnRun { bottom: 40px; right: 120px; width: 70px; height: 70px; font-size: 0.8rem; }
+
+        .touch-btn:active { background: var(--neon-blue); color: #000; }
+
+        @media (hover: hover) and (pointer: fine) {
+            #joystickArea, #interactBtn, #btnJump, #btnRun { display: none !important; }
+        }
+
+        /* SE O CONTROLE ESTIVER CONECTADO, ESCONDE TODA A UI TOUCH */
+        #hud.gamepad-active #joystickArea,
+        #hud.gamepad-active #interactBtn,
+        #hud.gamepad-active #btnJump,
+        #hud.gamepad-active #btnRun,
+        #hud.gamepad-active #vespaControls {
+            display: none !important;
+        }
+
+        /* === CONTROLES DA VESPA (MOBILE) === */
+        #vespaControls {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: none;
+        }
+
+        .vespa-btn {
+            position: absolute;
+            pointer-events: auto;
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            border-radius: 50%;
+            font-family: inherit;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+
+        .vespa-btn:active { background: var(--neon-blue); color: #000; }
+
+        #btnLeft { bottom: 30px; left: 30px; }
+        #btnRight { bottom: 30px; left: 120px; }
+        #btnBrake { bottom: 30px; right: 120px; border-color: var(--neon-pink); color: var(--neon-pink); }
+        #btnGas { bottom: 30px; right: 30px; border-color: var(--neon-pink); color: var(--neon-pink); }
+        #btnHorn { bottom: 120px; right: 30px; width: 60px; height: 60px; font-size: 1.5rem; }
+        #btnExitVespa { top: 20px; right: 70px; width: 50px; height: 50px; font-size: 1rem; border-color: #fff; color: #fff; }
+
+        /* === IFRAME DOS MINIGAMES === */
+        #gameFrame {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            z-index: 500;
+            display: none;
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loadingScreen">
+        <div class="vhs-text">CARREGANDO...</div>
+        <div class="loading-bar"><div class="loading-fill"></div></div>
+    </div>
+
+    <div id="rotateWarning">
+        <div class="rotate-icon"></div>
+        <h2>GIRE O CELULAR</h2>
+        <p>Jogue em modo paisagem para a melhor experiência</p>
+    </div>
+
+    <div id="hud">
+        <div id="coinDisplay">🪙 <span id="coinAmount">100</span></div>
+        <button id="fullscreenBtn">⛶</button>
+        <div id="crosshair"></div>
+        <div id="interactionPrompt">PRESSIONE [E] OU TOQUE EM INTERAGIR</div>
+        
+        <div id="joystickArea">
+            <div id="joystickKnob"></div>
+        </div>
+        
+        <button id="interactBtn">E</button>
+        <button id="btnJump" class="touch-btn">⤴</button>
+        <button id="btnRun" class="touch-btn">RUN</button>
+
+        <!-- CONTROLES DA VESPA -->
+        <div id="vespaControls">
+            <button id="btnLeft" class="vespa-btn">◀</button>
+            <button id="btnRight" class="vespa-btn">▶</button>
+            <button id="btnBrake" class="vespa-btn">B</button>
+            <button id="btnGas" class="vespa-btn">A</button>
+            <button id="btnHorn" class="vespa-btn">📯</button>
+            <button id="btnExitVespa" class="vespa-btn">SAIR</button>
+        </div>
+    </div>
+
+    <iframe id="gameFrame" src=""></iframe>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // ========================================================
+        // VARIÁVEIS GLOBAIS E CONFIGURAÇÃO INICIAL
+        // ========================================================
+        let scene, camera, renderer, clock;
+        let isPaused = false;
+        
+        // Sistema de Moedas
+        let coins = 100;
+        const coinAmountEl = document.getElementById('coinAmount');
+
+        // Estado da Vespa
+        let isDriving = false;
+        let vespaPivot = new THREE.Group(); 
+        let vespaModel = null;
+        let vespaCollider = null;
+        let vespaBoxIndex = -1; 
+        let vespaSpeed = 0;
+        let vespaVelocityY = 0;
+        const gravity = -25.0; 
+
+        // Inputs da Vespa (Mobile/Teclado)
+        let isAccelerating = false;
+        let isBraking = false;
+        let isSteeringLeft = false;
+        let isSteeringRight = false;
+
+        // Inputs Gerais
+        let isRunning = false;
+        let lookYaw = 0;
+        let lookPitch = 0;
+
+        const groundMeshes = [];
+        const groundRaycaster = new THREE.Raycaster();
+        
+        let player = {
+            position: new THREE.Vector3(0, 1.6, 5),
+            velocity: new THREE.Vector3(),
+            yaw: Math.PI,
+            pitch: 0,
+            height: 1.6,
+            radius: 0.3,
+            velocityY: 0,
+            isGrounded: false
+        };
+        
+        const keys = {};
+        const colliders = []; 
+        let interactables = [];
+        let npcs = []; 
+
+        let pendingVespaState = null;
+        let pendingNpcStates = [];
+        
+        let joystickActive = false;
+        let joystickVector = { x: 0, y: 0 };
+        let touchLookId = null;
+        let lastTouchX = 0, lastTouchY = 0;
+
+        let currentInteractable = null;
+        const raycaster = new THREE.Raycaster();
+        const interactBtn = document.getElementById('interactBtn');
+        const interactionPrompt = document.getElementById('interactionPrompt');
+        const hudEl = document.getElementById('hud');
+
+        const matWood = new THREE.MeshStandardMaterial({ color: 0xc48a4a, roughness: 0.8, flatShading: true });
+        const matWall = new THREE.MeshStandardMaterial({ color: 0xe6d7c3, roughness: 0.9 });
+        const matWainscot = new THREE.MeshStandardMaterial({ color: 0x5a3a2a, roughness: 0.7 });
+
+        // ========================================================
+        // SISTEMA DE GAMEPAD (BLUETOOTH) COM DEADZONE SUAVE
+        // ========================================================
+        let gamepadIndex = null;
+        let prevBtnStates = {};
+
+        function applyDeadzone(value, dz) {
+            const absVal = Math.abs(value);
+            if (absVal < dz) return 0;
+            const sign = Math.sign(value);
+            return sign * ((absVal - dz) / (1.0 - dz));
+        }
+
+        window.addEventListener('gamepadconnected', (e) => {
+            gamepadIndex = e.gamepad.index;
+            hudEl.classList.add('gamepad-active');
+            console.log("Controle conectado!");
+        });
+
+        window.addEventListener('gamepaddisconnected', (e) => {
+            if (e.gamepad.index === gamepadIndex) {
+                gamepadIndex = null;
+                hudEl.classList.remove('gamepad-active');
+                console.log("Controle desconectado!");
+            }
+        });
+
+        function updateGamepad() {
+            if (gamepadIndex === null) return;
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[gamepadIndex];
+            if (!gp) return;
+
+            const dz = 0.15;
+
+            let lx = applyDeadzone(gp.axes[0] || 0, dz);
+            let ly = applyDeadzone(gp.axes[1] || 0, dz);
+
+            if (gp.buttons[14] && gp.buttons[14].pressed) lx = -1;
+            if (gp.buttons[15] && gp.buttons[15].pressed) lx = 1;
+            if (gp.buttons[12] && gp.buttons[12].pressed) ly = -1;
+            if (gp.buttons[13] && gp.buttons[13].pressed) ly = 1;
+
+            joystickVector.x = lx;
+            joystickVector.y = ly;
+            joystickActive = (lx !== 0 || ly !== 0);
+
+            // R1 (5) = Correr
+            isRunning = gp.buttons[5] && gp.buttons[5].pressed;
+
+            if (isDriving) {
+                isSteeringLeft = lx < 0;
+                isSteeringRight = lx > 0;
+                isAccelerating = gp.buttons[7] && gp.buttons[7].pressed; // R2
+                isBraking = gp.buttons[6] && gp.buttons[6].pressed; // L2
+            }
+
+            let rx = applyDeadzone(gp.axes[2] || 0, dz);
+            let ry = applyDeadzone(gp.axes[3] || 0, dz);
+            if (rx !== 0 || ry !== 0) {
+                if (isDriving) {
+                    lookYaw -= rx * 0.05;
+                    lookPitch -= ry * 0.05;
+                    lookYaw = Math.max(-Math.PI/2, Math.min(Math.PI/2, lookYaw));
+                    lookPitch = Math.max(-0.6, Math.min(0.6, lookPitch));
+                } else {
+                    player.yaw -= rx * 0.05;
+                    player.pitch -= ry * 0.05;
+                    player.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, player.pitch));
+                }
+            }
+
+            const checkJustPressed = (index) => {
+                const pressed = gp.buttons[index] && gp.buttons[index].pressed;
+                const wasPressed = prevBtnStates[index] || false;
+                prevBtnStates[index] = pressed;
+                return pressed && !wasPressed;
+            };
+
+            if (checkJustPressed(0)) { // Botão A
+                if (!isDriving) executeInteraction();
+            }
+
+            if (checkJustPressed(1)) { // Botão B
+                if (isDriving) playHorn();
+                else if (player.isGrounded) player.velocityY = 8.0; // Pulo
+            }
+
+            if (checkJustPressed(3)) { // Botão Y
+                if (isDriving) toggleVespa();
+                else if (currentInteractable && currentInteractable.type === 'vespa') toggleVespa();
+            }
+        }
+
+        // ========================================================
+        // SISTEMA DE SAVE E LOAD
+        // ========================================================
+        function saveGame() {
+            if (isPaused) return;
+            try {
+                const data = { 
+                    px: player.position.x, py: player.position.y, pz: player.position.z, 
+                    yaw: player.yaw, pitch: player.pitch,
+                    vx: vespaPivot.position.x, vy: vespaPivot.position.y, vz: vespaPivot.position.z, vry: vespaPivot.rotation.y,
+                    npcs: npcs.map(n => ({ x: n.mesh.position.x, z: n.mesh.position.z })),
+                    coins: coins
+                };
+                localStorage.setItem('retroTapesSave', JSON.stringify(data));
+            } catch(e) { console.error("Erro ao salvar", e); }
+        }
+
+        function loadGame() {
+            try {
+                const saved = localStorage.getItem('retroTapesSave');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    if (data && typeof data.px === 'number') {
+                        player.position.set(data.px, data.py, data.pz);
+                        player.yaw = data.yaw;
+                        player.pitch = data.pitch;
+                    }
+                    if (data && typeof data.vx === 'number') {
+                        pendingVespaState = { x: data.vx, y: data.vy, z: data.vz, ry: data.vry };
+                    }
+                    if (data && Array.isArray(data.npcs)) {
+                        pendingNpcStates = data.npcs;
+                    }
+                    if (data && typeof data.coins === 'number') {
+                        coins = data.coins;
+                    }
+                }
+                updateCoinUI();
+            } catch(e) { console.error("Erro ao carregar", e); }
+        }
+
+        function updateCoinUI() {
+            coinAmountEl.innerText = coins;
+        }
+
+        // ========================================================
+        // INICIALIZAÇÃO DA CENA
+        // ========================================================
+        function init() {
+            try {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x87ceeb);
+                scene.fog = new THREE.Fog(0x87ceeb, 40, 120);
+
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
+                loadGame();
+                camera.position.copy(player.position);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 1.2;
+                document.body.appendChild(renderer.domElement);
+
+                clock = new THREE.Clock();
+
+                buildOutdoor();
+                buildScene();
+                setupEvents();
+
+                window.addEventListener('message', (event) => {
+                    if (event.data === 'closeGame') {
+                        const frame = document.getElementById('gameFrame');
+                        frame.src = ''; 
+                        frame.style.display = 'none';
+                    }
+                });
+
+                document.body.addEventListener('touchstart', () => {
+                    const pads = navigator.getGamepads();
+                    for(let i=0; i<pads.length; i++) {
+                        if(pads[i]) {
+                            gamepadIndex = i;
+                            hudEl.classList.add('gamepad-active');
+                            break;
+                        }
+                    }
+                }, { once: true });
+
+                setInterval(saveGame, 3000);
+                animate();
+            } catch(e) {
+                console.error("Erro fatal ao inicializar:", e);
+                document.body.innerHTML = `<div style="color:red; padding:20px; font-family:monospace;">Erro ao iniciar: ${e.message}</div>`;
+            }
+        }
+
+        // ========================================================
+        // CARREGAR MODELOS 3D
+        // ========================================================
+        function loadVespa() {
+            const loader = new GLTFLoader();
+            loader.load("https://raw.githubusercontent.com/wmattos830-hash/locadora90s/refs/heads/main/moto.glb", (gltf) => {
+                vespaModel = gltf.scene;
+                vespaPivot.add(vespaModel);
+                vespaModel.scale.set(1.0, 1.0, 1.0);
+                vespaModel.updateMatrixWorld(true);
+                const box = new THREE.Box3().setFromObject(vespaModel);
+                vespaModel.position.y -= box.min.y; 
+                vespaModel.rotation.y = Math.PI; 
+                vespaModel.traverse((node) => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
+
+                if (pendingVespaState) {
+                    vespaPivot.position.set(pendingVespaState.x, pendingVespaState.y + 0.5, pendingVespaState.z);
+                    vespaPivot.rotation.y = pendingVespaState.ry;
+                } else {
+                    vespaPivot.position.set(4, 3, 14); 
+                }
+                scene.add(vespaPivot);
+                vespaCollider = new THREE.Mesh(new THREE.BoxGeometry(1, 1.5, 2), new THREE.MeshBasicMaterial({ visible: false }));
+                vespaCollider.position.copy(vespaPivot.position);
+                scene.add(vespaCollider);
+                vespaBoxIndex = colliders.length;
+                colliders.push(new THREE.Box3().setFromObject(vespaCollider));
+                interactables.push({ mesh: vespaCollider, name: "MOTO VESPA", type: 'vespa' });
+            }, undefined, (error) => console.error("Erro ao carregar a Vespa:", error));
+        }
+
+        function loadCar() {
+            const loader = new GLTFLoader();
+            loader.load("https://raw.githubusercontent.com/wmattos830-hash/locadora90s/refs/heads/main/fiatuno.glb", (gltf) => {
+                const carModel = gltf.scene;
+                carModel.scale.set(1.0, 1.0, 1.0);
+                carModel.updateMatrixWorld(true);
+                const box = new THREE.Box3().setFromObject(carModel);
+                carModel.position.y -= box.min.y; 
+                carModel.traverse((node) => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
+                carModel.position.set(-6, 0, 14);
+                scene.add(carModel);
+                const carBox = new THREE.Box3().setFromObject(carModel);
+                carBox.expandByScalar(0.1);
+                colliders.push(carBox);
+            }, undefined, (error) => console.error("Erro ao carregar o Uno:", error));
+        }
+
+        // ========================================================
+        // CONSTRUÇÃO DO CENÁRIO
+        // ========================================================
+        function buildScene() {
+            scene.add(new THREE.AmbientLight(0xffffff, 1.8));
+            const counterLight = new THREE.PointLight(0xffaa55, 2.5, 12, 1.5);
+            counterLight.position.set(0, 3, -8); counterLight.castShadow = true; scene.add(counterLight);
+
+            const fluors = [ {x:-4, z:0}, {x:4, z:0}, {x:0, z:-6} ];
+            fluors.forEach(pos => {
+                const light = new THREE.PointLight(0xffffff, 1.5, 14, 2); light.position.set(pos.x, 3.5, pos.z); scene.add(light);
+                const fixture = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 0.5), new THREE.MeshBasicMaterial({ color: 0xffffff })); fixture.position.set(pos.x, 3.9, pos.z); scene.add(fixture);
+            });
+
+            createFloor(); createCeiling(); createWalls(); createShelves(); createArcades(); createCounter(); createPosters(); createNPCs(); 
+        }
+
+        function createFloor() {
+            const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#5588bb'; ctx.fillRect(0, 0, 128, 128); ctx.fillStyle = '#336699';
+            for(let i=0; i<4; i++) for(let j=0; j<4; j++) { if((i+j)%2===0) ctx.fillRect(i*32, j*32, 32, 32); }
+            ctx.strokeStyle = '#111'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, 128, 128);
+            const tex = new THREE.CanvasTexture(canvas); tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(6, 6);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
+            floor.rotation.x = -Math.PI / 2; floor.position.y = 0.1; floor.receiveShadow = true; scene.add(floor); groundMeshes.push(floor);
+        }
+
+        function createCeiling() {
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 1 }));
+            ceil.rotation.x = Math.PI / 2; ceil.position.y = 4; scene.add(ceil);
+        }
+
+        function createWalls() {
+            function buildWall(width, x, z, rotY, hasWindow = false) {
+                const group = new THREE.Group();
+                if(!hasWindow) {
+                    const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 4, 0.2), matWall); group.add(wall);
+                    const wains = new THREE.Mesh(new THREE.BoxGeometry(width, 1.2, 0.25), matWainscot); wains.position.y = 0.6; group.add(wains);
+                } else {
+                    const seg = width / 3;
+                    const w1 = new THREE.Mesh(new THREE.BoxGeometry(seg, 4, 0.2), matWall); w1.position.x = -seg; group.add(w1);
+                    const w3 = new THREE.Mesh(new THREE.BoxGeometry(seg, 4, 0.2), matWall); w3.position.x = seg; group.add(w3);
+                    const wBottom = new THREE.Mesh(new THREE.BoxGeometry(seg, 1.2, 0.2), matWall); wBottom.position.y = 0.6; group.add(wBottom);
+                    const wTop = new THREE.Mesh(new THREE.BoxGeometry(seg, 1.5, 0.2), matWall); wTop.position.y = 3.25; group.add(wTop);
+                    const wains = new THREE.Mesh(new THREE.BoxGeometry(width, 1.2, 0.25), matWainscot); wains.position.y = 0.6; group.add(wains);
+                }
+                group.position.set(x, 2, z); group.rotation.y = rotY; scene.add(group);
+                const box = new THREE.Box3().setFromObject(group); box.expandByScalar(0.05); colliders.push(box);
+            }
+            buildWall(20, 0, -10, 0);
+            const frontL = new THREE.Group(); let wallL = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 0.2), matWall); wallL.position.x = -6; frontL.add(wallL);
+            let wainsL = new THREE.Mesh(new THREE.BoxGeometry(8, 1.2, 0.25), matWainscot); wainsL.position.set(-6, 0.6, 0); frontL.add(wainsL); frontL.position.set(0, 2, 10); scene.add(frontL); colliders.push(new THREE.Box3().setFromObject(frontL));
+            const frontR = new THREE.Group(); let wallR = new THREE.Mesh(new THREE.BoxGeometry(8, 4, 0.2), matWall); wallR.position.x = 6; frontR.add(wallR);
+            let wainsR = new THREE.Mesh(new THREE.BoxGeometry(8, 1.2, 0.25), matWainscot); wainsR.position.set(6, 0.6, 0); frontR.add(wainsR); frontR.position.set(0, 2, 10); scene.add(frontR); colliders.push(new THREE.Box3().setFromObject(frontR));
+            buildWall(20, -10, 0, Math.PI/2, false); buildWall(20, 10, 0, Math.PI/2, false);
+        }
+
+        function createShelves() {
+            const textureLoader = new THREE.TextureLoader(); const sideMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+            const cols = 10; const rows = 10; const spritesheet = textureLoader.load("https://raw.githubusercontent.com/wmattos830-hash/locadora90s/refs/heads/main/filmes.jpg");
+            spritesheet.colorSpace = THREE.SRGBColorSpace;
+            const vhsMaterials = [];
+            for(let i = 0; i < cols * rows; i++) {
+                const tex = spritesheet.clone(); tex.needsUpdate = true; tex.repeat.set(1 / cols, 1 / rows);
+                tex.offset.x = (i % cols) / cols; tex.offset.y = 1 - (Math.floor(i / cols) + 1) / rows;
+                const frontMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 });
+                vhsMaterials.push([sideMat, sideMat, sideMat, sideMat, frontMat, frontMat.clone()]);
+            }
+            function buildIsland(pos) {
+                const group = new THREE.Group(); const shelfDepth = 0.6; 
+                const base = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, shelfDepth), matWood); base.position.y = 0.1; group.add(base);
+                const divider = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.6, shelfDepth), matWood); divider.position.y = 0.9; group.add(divider);
+                const backWall = new THREE.Mesh(new THREE.BoxGeometry(3, 1.6, 0.05), matWood); backWall.position.set(0, 0.9, 0); group.add(backWall);
+                for(let i=0; i<3; i++) { const shelf = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, shelfDepth), matWood); shelf.position.y = 0.5 + (i * 0.5); group.add(shelf); }
+                for(let side = 0; side < 2; side++) {
+                    const zPos = side === 0 ? 0.25 : -0.25; const rotY = side === 0 ? 0 : Math.PI;
+                    for(let row=0; row<3; row++) { for(let i=0; i<8; i++) {
+                        const tapeMatArray = vhsMaterials[Math.floor(Math.random() * vhsMaterials.length)];
+                        const tape = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.35, 0.08), tapeMatArray); let xPos = -1.3 + (i * 0.36);
+                        if (i >= 4) xPos += 0.12; tape.position.set(xPos, 0.7 + (row * 0.5), zPos); tape.rotation.y = rotY; group.add(tape);
+                    }}
+                }
+                group.position.set(pos.x, 0, pos.z); scene.add(group); colliders.push(new THREE.Box3().setFromObject(group));
+            }
+            buildIsland({ x: -3, z: 2 }); buildIsland({ x: -3, z: -3 });
+            for(let row=0; row<4; row++) {
+                const shelf = new THREE.Mesh(new THREE.BoxGeometry(18, 0.1, 0.3), matWainscot); shelf.position.set(0, 1 + (row * 0.8), -9.8); scene.add(shelf);
+                for(let i=0; i<30; i++) {
+                    const tapeMatArray = vhsMaterials[Math.floor(Math.random() * vhsMaterials.length)];
+                    const cover = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.04), tapeMatArray); cover.position.set(-8.8 + (i * 0.6), 1.3 + (row * 0.8), -9.65); scene.add(cover);
+                }
+            }
+        }
+
+        function createArcades() {
+            const standardArcades = [
+                { name: "PIXEL KNIGHT", url: "game2.html", lightCol: 0x00ffff, bodyCol: 0x004466, pos: {x: 9.2, z: 3.5}, rot: -Math.PI/2 },
+                { name: "SPACE BLAST", url: "game3.html", lightCol: 0xffff00, bodyCol: 0x666600, pos: {x: 9.2, z: 0.5}, rot: -Math.PI/2 },
+                { name: "PONG EXTREME", url: "game4.html", lightCol: 0x00ff00, bodyCol: 0x004400, pos: {x: 9.2, z: -2.5}, rot: -Math.PI/2 },
+                { name: "STARFIGHTER 3D", url: "game5.html", lightCol: 0xff5e00, bodyCol: 0x661100, pos: {x: -9.2, z: 6.5}, rot: Math.PI/2 },
+                { name: "CYBER RUMBLE", url: "game6.html", lightCol: 0x9d00ff, bodyCol: 0x330055, pos: {x: -9.2, z: 3.5}, rot: Math.PI/2 },
+                { name: "MAZE RUNNER", url: "game7.html", lightCol: 0x0099ff, bodyCol: 0x002244, pos: {x: -9.2, z: 0.5}, rot: Math.PI/2 },
+                { name: "GALACTIC INVADERS", url: "game8.html", lightCol: 0xffffff, bodyCol: 0x444444, pos: {x: -9.2, z: -2.5}, rot: Math.PI/2 }
+            ];
+            standardArcades.forEach((data) => {
+                const group = new THREE.Group(); const bodyMat = new THREE.MeshStandardMaterial({ color: data.bodyCol, roughness: 0.6, metalness: 0.1, flatShading: true });
+                const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.8, 1.2), bodyMat); body.position.y = 0.9; group.add(body);
+                const marquee = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.4, 0.2), new THREE.MeshBasicMaterial({ color: data.lightCol })); marquee.position.set(0, 2.0, 0.4); group.add(marquee); 
+                const mLight = new THREE.PointLight(data.lightCol, 0.8, 3); mLight.position.set(0, 2.0, 0.2); group.add(mLight);
+                const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.6), new THREE.MeshBasicMaterial({ color: data.lightCol })); screen.position.set(0, 1.4, 0.61); group.add(screen); 
+                const panel = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.1, 0.4), new THREE.MeshStandardMaterial({ color: 0x222222 })); panel.position.set(0, 0.85, 0.45); group.add(panel); 
+                const stickBall = new THREE.Mesh(new THREE.SphereGeometry(0.08), new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 })); stickBall.position.set(-0.3, 1.0, 0.45); group.add(stickBall);
+                for(let i=0; i<3; i++) { const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05), new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 0.5 })); btn.position.set(0.1 + (i * 0.18), 0.95, 0.45); group.add(btn); }
+                group.position.set(data.pos.x, 0, data.pos.z); group.rotation.y = data.rot; scene.add(group); colliders.push(new THREE.Box3().setFromObject(group));
+                interactables.push({ mesh: group, name: data.name, type: 'arcade', url: data.url });
+            });
+            createRacingArcade({ name: "NEON RACER", url: "game1.html", lightCol: 0xff00ff, bodyCol: 0x880088, pos: {x: 8.8, z: 6.5}, rot: -Math.PI/2 });
+        }
+
+        function createRacingArcade(data) {
+            const group = new THREE.Group(); const bodyMat = new THREE.MeshStandardMaterial({ color: data.bodyCol, roughness: 0.4, metalness: 0.3, flatShading: true });
+            const accentMat = new THREE.MeshBasicMaterial({ color: data.lightCol }); const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.5 });
+            const base = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 2.2), bodyMat); base.position.y = 0.1; group.add(base);
+            const seatBase = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.4, 0.8), bodyMat); seatBase.position.set(0, 0.4, 0.6); group.add(seatBase);
+            const seatBack = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1, 0.2), bodyMat); seatBack.position.set(0, 0.9, 0.9); seatBack.rotation.x = -0.2; group.add(seatBack);
+            const dash = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 0.6), bodyMat); dash.position.set(0, 0.7, -0.2); group.add(dash);
+            const column = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.3, 0.1), bodyMat); column.position.set(0, 1.0, 0.0); column.rotation.x = -0.5; group.add(column);
+            const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 8, 16), redMat); wheel.position.set(0, 1.15, 0.1); group.add(wheel);
+            const screenHousing = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.2, 0.1), bodyMat); screenHousing.position.set(0, 1.6, -0.75); screenHousing.rotation.x = 0.3; group.add(screenHousing);
+            const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1), accentMat); screen.position.set(0, 1.6, -0.7); screen.rotation.x = 0.3; group.add(screen);
+            const marquee = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 0.2), accentMat); marquee.position.set(0, 2.4, -0.4); group.add(marquee);
+            const mLight = new THREE.PointLight(data.lightCol, 1.0, 4); mLight.position.set(0, 2.0, 0); group.add(mLight);
+            group.position.set(data.pos.x, 0, data.pos.z); group.rotation.y = data.rot; scene.add(group); colliders.push(new THREE.Box3().setFromObject(group));
+            interactables.push({ mesh: group, name: data.name, type: 'arcade', url: data.url });
+        }
+
+        function createCounter() {
+            const group = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 1.5), matWainscot); base.position.y = 0.5; group.add(base);
+            const top = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.1, 1.7), matWood); top.position.y = 1.05; group.add(top);
+            const signMat = new THREE.MeshBasicMaterial({ color: 0xff2a6d }); const sign = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 0.1), signMat); sign.position.set(0, 1.5, -0.7); group.add(sign);
+            const crtBody = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.5), new THREE.MeshStandardMaterial({color: 0xeeeeee})); crtBody.position.set(-1, 1.5, -0.3); group.add(crtBody);
+            const crtScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.35), new THREE.MeshBasicMaterial({ color: 0x00ff00 })); crtScreen.position.set(-1, 1.5, -0.05); group.add(crtScreen);
+            const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.2), new THREE.MeshStandardMaterial({color: 0xaaaaaa})); keyboard.position.set(-0.4, 1.18, 0.1); group.add(keyboard);
+            const rack = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.3), matWood); rack.position.set(1.2, 1.3, -0.2); group.add(rack);
+            const candyColors = [0xff0000, 0xffff00, 0x00ff00, 0x0000ff, 0xff00ff];
+            for(let i=0; i<6; i++) { const candy = new THREE.Mesh(new THREE.SphereGeometry(0.06), new THREE.MeshStandardMaterial({ color: candyColors[i%5], emissive: candyColors[i%5], emissiveIntensity: 0.2 })); candy.position.set(1.0 + (i%3)*0.2, 1.55, -0.2 + Math.floor(i/3)*0.15); group.add(candy); }
+            group.position.set(0, 0, -8.5); scene.add(group); colliders.push(new THREE.Box3().setFromObject(group));
+        }
+
+        function createPosters() {
+            const posterColors = [0xff2a6d, 0x05d9e8, 0x8a2be2, 0xffd700]; const positions = [ { z: 5 }, { z: -3 } ];
+            positions.forEach((pos, i) => { const poster = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2), new THREE.MeshBasicMaterial({ color: posterColors[i], side: THREE.DoubleSide })); poster.position.set(-9.8, 2.5, pos.z); poster.rotation.y = Math.PI / 2; scene.add(poster); });
+        }
+
+        function buildOutdoor() {
+            const sunLight = new THREE.DirectionalLight(0xffffff, 3.0); sunLight.position.set(-10, 20, 20); sunLight.castShadow = true; sunLight.shadow.mapSize.width = 1024; sunLight.shadow.mapSize.height = 1024; scene.add(sunLight);
+            const grassMat = new THREE.MeshStandardMaterial({ color: 0x3a7d3a, roughness: 1 }); const grass = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), grassMat);
+            grass.rotation.x = -Math.PI / 2; grass.position.y = 0; grass.receiveShadow = true; scene.add(grass); groundMeshes.push(grass);
+            const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
+            const streetX = new THREE.Mesh(new THREE.PlaneGeometry(300, 12), asphaltMat); streetX.rotation.x = -Math.PI / 2; streetX.position.set(0, 0.01, 16); streetX.receiveShadow = true; scene.add(streetX); groundMeshes.push(streetX);
+            const streetZ = new THREE.Mesh(new THREE.PlaneGeometry(12, 300), asphaltMat); streetZ.rotation.x = -Math.PI / 2; streetZ.position.set(20, 0.01, 0); streetZ.receiveShadow = true; scene.add(streetZ); groundMeshes.push(streetZ);
+            const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.9 });
+            const locSidewalk = new THREE.Mesh(new THREE.BoxGeometry(22, 0.2, 6), sidewalkMat); locSidewalk.position.set(0, 0.05, 11); scene.add(locSidewalk); groundMeshes.push(locSidewalk);
+            const lot1 = new THREE.Mesh(new THREE.BoxGeometry(20, 0.2, 20), sidewalkMat); lot1.position.set(40, 0.05, 16); scene.add(lot1); groundMeshes.push(lot1);
+            const lot2 = new THREE.Mesh(new THREE.BoxGeometry(20, 0.2, 20), sidewalkMat); lot2.position.set(-20, 0.05, 16); scene.add(lot2); groundMeshes.push(lot2);
+            const lot3 = new THREE.Mesh(new THREE.BoxGeometry(20, 0.2, 20), sidewalkMat); lot3.position.set(40, 0.05, -20); scene.add(lot3); groundMeshes.push(lot3);
+            const lot4 = new THREE.Mesh(new THREE.BoxGeometry(20, 0.2, 20), sidewalkMat); lot4.position.set(-20, 0.05, -20); scene.add(lot4); groundMeshes.push(lot4);
+            const boundMat = new THREE.MeshBasicMaterial({ visible: false });
+            const b1 = new THREE.Mesh(new THREE.BoxGeometry(300, 10, 1), boundMat); b1.position.set(0, 5, 120); scene.add(b1); colliders.push(new THREE.Box3().setFromObject(b1));
+            const b2 = new THREE.Mesh(new THREE.BoxGeometry(300, 10, 1), boundMat); b2.position.set(0, 5, -120); scene.add(b2); colliders.push(new THREE.Box3().setFromObject(b2));
+            const b3 = new THREE.Mesh(new THREE.BoxGeometry(1, 10, 300), boundMat); b3.position.set(120, 5, 0); scene.add(b3); colliders.push(new THREE.Box3().setFromObject(b3));
+            const b4 = new THREE.Mesh(new THREE.BoxGeometry(1, 10, 300), boundMat); b4.position.set(-120, 5, 0); scene.add(b4); colliders.push(new THREE.Box3().setFromObject(b4));
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 5), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8 })); pole.position.set(-8, 2.5, 14); scene.add(pole);
+            const lampLight = new THREE.PointLight(0xffaa55, 1.5, 10, 2); lampLight.position.set(-8, 4.8, 14); scene.add(lampLight);
+            const lampBulb = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshBasicMaterial({color: 0xffffaa})); lampBulb.position.set(-8, 4.7, 14); scene.add(lampBulb);
+            for(let i=0; i<6; i++) {
+                const tree = new THREE.Group(); const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 1.5), new THREE.MeshStandardMaterial({color: 0x4a2f1d})); trunk.position.y = 0.75; tree.add(trunk);
+                const leaves = new THREE.Mesh(new THREE.ConeGeometry(1, 2.5, 6), new THREE.MeshStandardMaterial({color: 0x2e7d32, flatShading: true})); leaves.position.y = 2.5; tree.add(leaves);
+                const lots = [ {x: 40, z: 16}, {x: -20, z: 16}, {x: 40, z: -20}, {x: -20, z: -20} ]; const lot = lots[i % 4];
+                tree.position.set(lot.x + (Math.random() - 0.5) * 10, 0, lot.z + (Math.random() - 0.5) * 10); scene.add(tree);
+            }
+            createOutdoorSign(); loadVespa(); loadCar(); 
+        }
+
+        function createOutdoorSign() {
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128; const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, 512, 128); ctx.font = 'bold 70px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.shadowColor = '#ff2a6d'; ctx.shadowBlur = 20; ctx.fillStyle = '#ff2a6d'; ctx.fillText('RETRO', 150, 64); ctx.shadowColor = '#05d9e8'; ctx.fillStyle = '#05d9e8'; ctx.fillText('TAPES', 362, 64);
+            const tex = new THREE.CanvasTexture(canvas); const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5), new THREE.MeshBasicMaterial({ map: tex, transparent: true })); sign.position.set(0, 3.5, 10.6); scene.add(sign);
+            const signBase = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 0.2), new THREE.MeshStandardMaterial({color: 0x333333})); signBase.position.set(0, 2.7, 10.5); scene.add(signBase);
+            const pole1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1, 0.2), new THREE.MeshStandardMaterial({color: 0x333333})); pole1.position.set(-2, 2.2, 10.5); scene.add(pole1);
+            const pole2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1, 0.2), new THREE.MeshStandardMaterial({color: 0x333333})); pole2.position.set(2, 2.2, 10.5); scene.add(pole2);
+            const signLight = new THREE.PointLight(0xff2a6d, 1.5, 8); signLight.position.set(0, 3, 12); scene.add(signLight);
+        }
+
+        function createNPC(shirtColor, pantsColor, position, index, outdoor = false) {
+            const group = new THREE.Group(); const skinMat = new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.8, flatShading: true });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.8, flatShading: true }); const pantsMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.8, flatShading: true });
+            const legL = new THREE.Group(); const legLMesh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.15), pantsMat); legLMesh.position.y = -0.4; legL.add(legLMesh); legL.position.set(-0.1, 0.8, 0); group.add(legL);
+            const legR = new THREE.Group(); const legRMesh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.15), pantsMat); legRMesh.position.y = -0.4; legR.add(legRMesh); legR.position.set(0.1, 0.8, 0); group.add(legR);
+            const armL = new THREE.Group(); const armLMesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.1), shirtMat); armLMesh.position.y = -0.25; armL.add(armLMesh); armL.position.set(-0.3, 1.35, 0); group.add(armL);
+            const armR = new THREE.Group(); const armRMesh = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.1), shirtMat); armRMesh.position.y = -0.25; armR.add(armRMesh); armR.position.set(0.3, 1.35, 0); group.add(armR);
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.3), shirtMat); torso.position.y = 1.1; group.add(torso);
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), skinMat); head.position.y = 1.6; group.add(head);
+            if (pendingNpcStates[index]) group.position.set(pendingNpcStates[index].x, 0, pendingNpcStates[index].z); else group.position.copy(position);
+            scene.add(group);
+            let initialTarget = outdoor ? new THREE.Vector3((Math.random() - 0.5) * 80, 0, 16) : new THREE.Vector3(position.x + (Math.random() - 0.5) * 6, 0, position.z + (Math.random() - 0.5) * 6);
+            npcs.push({ mesh: group, legL, legR, armL, armR, targetPos: initialTarget, speed: 1.2, waitTime: 0, walkPhase: Math.random() * Math.PI * 2, outdoor: outdoor });
+        }
+
+        function createNPCs() {
+            createNPC(0x1565c0, 0x333333, new THREE.Vector3(-4, 0, 0), 0, false); createNPC(0xd32f2f, 0x222222, new THREE.Vector3(4, 0, -4), 1, false); createNPC(0x388e3c, 0x111111, new THREE.Vector3(0, 0, 4), 2, false);  
+            createNPC(0xff5722, 0x111111, new THREE.Vector3(5, 0, 12), 3, true); createNPC(0x009688, 0x111111, new THREE.Vector3(-5, 0, 12), 4, true); createNPC(0xe91e63, 0x111111, new THREE.Vector3(20, 0, -10), 5, true); 
+        }
+
+        function updateNPCs(dt) {
+            npcs.forEach(npc => {
+                if(npc.waitTime > 0) { npc.waitTime -= dt; npc.legL.rotation.x = 0; npc.legR.rotation.x = 0; npc.armL.rotation.x = 0; npc.armR.rotation.x = 0; return; }
+                const dir = new THREE.Vector3().subVectors(npc.targetPos, npc.mesh.position); dir.y = 0;
+                if(dir.length() < 0.5) { 
+                    npc.waitTime = 2 + Math.random() * 4; 
+                    if(npc.outdoor) { const onXStreet = Math.random() > 0.5; npc.targetPos = onXStreet ? new THREE.Vector3((Math.random() - 0.5) * 80, 0, 16) : new THREE.Vector3(20, 0, (Math.random() - 0.5) * 80); } 
+                    else npc.targetPos = new THREE.Vector3((Math.random() - 0.5) * 14, 0, (Math.random() - 0.5) * 14); 
+                } else { 
+                    dir.normalize(); let nextStep = npc.mesh.position.clone().addScaledVector(dir, npc.speed * dt);
+                    if(!checkCollision(nextStep, 0.3, vespaBoxIndex)) {
+                        npc.mesh.position.copy(nextStep); npc.mesh.lookAt(npc.targetPos.x, npc.mesh.position.y, npc.targetPos.z);
+                        npc.walkPhase += dt * npc.speed * 8; const swing = Math.sin(npc.walkPhase) * 0.6; npc.legL.rotation.x = swing; npc.legR.rotation.x = -swing; npc.armL.rotation.x = -swing; npc.armR.rotation.x = swing; 
+                    } else { npc.targetPos = npc.outdoor ? (Math.random() > 0.5 ? new THREE.Vector3((Math.random() - 0.5) * 80, 0, 16) : new THREE.Vector3(20, 0, (Math.random() - 0.5) * 80)) : new THREE.Vector3((Math.random() - 0.5) * 14, 0, (Math.random() - 0.5) * 14); }
+                }
+            });
+        }
+
+        // ========================================================
+        // COLISÃO DINÂMICA (AGORA USA O Y DO PLAYER)
+        // ========================================================
+        function checkCollision(newPos, radius = player.radius, ignoreIndex = -1) {
+            const isVespa = radius > 0.5; 
+            const boxHeight = isVespa ? 2.0 : player.height;
+            // O colisor agora acompanha o Y do jogador (para não bater no ar ao pular)
+            const yMin = isVespa ? 0 : (newPos.y - boxHeight); 
+            const playerBox = new THREE.Box3(
+                new THREE.Vector3(newPos.x - radius, yMin, newPos.z - radius),
+                new THREE.Vector3(newPos.x + radius, yMin + boxHeight, newPos.z + radius)
+            );
+            for(let i = 0; i < colliders.length; i++) {
+                if (i === ignoreIndex) continue; 
+                if(colliders[i].intersectsBox(playerBox)) return true;
+            }
+            return false;
+        }
+
+        // ========================================================
+        // LÓGICA DA VESPA
+        // ========================================================
+        function applyVespaGravity(dt) {
+            if(!vespaModel) return;
+            vespaVelocityY += gravity * dt;
+            let newY = vespaPivot.position.y + vespaVelocityY * dt;
+            groundRaycaster.set(new THREE.Vector3(vespaPivot.position.x, vespaPivot.position.y + 1.0, vespaPivot.position.z), new THREE.Vector3(0, -1, 0));
+            const intersects = groundRaycaster.intersectObjects(groundMeshes);
+            if (intersects.length > 0) { let groundY = intersects[0].point.y; if (newY <= groundY) { newY = groundY; vespaVelocityY = 0; } }
+            vespaPivot.position.y = newY;
+            if(vespaCollider) { vespaCollider.position.y = newY; if(vespaBoxIndex !== -1) colliders[vespaBoxIndex].setFromObject(vespaCollider); }
+        }
+
+        function updateVespaControls(dt) {
+            let throttle = 0; let steer = 0;
+            if(keys['w'] || keys['arrowup'] || isAccelerating) throttle = 15;
+            if(keys['s'] || keys['arrowdown'] || isBraking) throttle = -8;
+            if(keys['a'] || keys['arrowleft'] || isSteeringLeft) steer += 1.5;
+            if(keys['d'] || keys['arrowright'] || isSteeringRight) steer -= 1.5;
+            if (joystickActive && gamepadIndex !== null) steer = -joystickVector.x * 1.5; 
+
+            vespaSpeed += throttle * dt; vespaSpeed *= 0.92; if(Math.abs(vespaSpeed) < 0.1) vespaSpeed = 0;
+            vespaPivot.rotation.y += steer * dt * (vespaSpeed / 10);
+
+            const forward = new THREE.Vector3(0, 0, -1).applyEuler(vespaPivot.rotation);
+            let nextPos = vespaPivot.position.clone(); nextPos.x += forward.x * vespaSpeed * dt; nextPos.z += forward.z * vespaSpeed * dt;
+
+            vespaCollider.position.set(nextPos.x, vespaPivot.position.y, nextPos.z);
+            if(vespaBoxIndex !== -1) colliders[vespaBoxIndex].setFromObject(vespaCollider);
+
+            if(!checkCollision(nextPos, 0.8, vespaBoxIndex)) { vespaPivot.position.x = nextPos.x; vespaPivot.position.z = nextPos.z; } 
+            else { vespaSpeed = 0; vespaCollider.position.set(vespaPivot.position.x, vespaPivot.position.y, vespaPivot.position.z); if(vespaBoxIndex !== -1) colliders[vespaBoxIndex].setFromObject(vespaCollider); }
+
+            camera.position.set(vespaPivot.position.x, vespaPivot.position.y + 1.4, vespaPivot.position.z); 
+            camera.rotation.order = 'YXZ'; camera.rotation.y = vespaPivot.rotation.y + lookYaw; camera.rotation.x = lookPitch;
+            player.yaw = vespaPivot.rotation.y; player.position.copy(vespaPivot.position); player.position.y = 1.6;
+        }
+
+        // ========================================================
+        // LÓGICA DO PLAYER (REFEITA PARA MELHOR FLUIDEZ E PULO)
+        // ========================================================
+        function updatePlayer(dt) {
+            // 1. Gravidade e Detecção do Chão
+            const pRay = new THREE.Raycaster();
+            pRay.set(new THREE.Vector3(player.position.x, player.position.y + 1.0, player.position.z), new THREE.Vector3(0, -1, 0));
+            const pIntersects = pRay.intersectObjects(groundMeshes);
+            let groundLevel = 0;
+            if (pIntersects.length > 0) groundLevel = pIntersects[0].point.y;
+
+            // Se estiver no chão ou abaixo dele, corrige a altura
+            if (player.position.y <= groundLevel + player.height + 0.1) {
+                player.position.y = groundLevel + player.height;
+                player.velocityY = 0;
+                player.isGrounded = true;
+            } else {
+                player.isGrounded = false;
+                player.velocityY -= 30.0 * dt; // Gravidade mais forte para não ficar flutuando
+                player.position.y += player.velocityY * dt;
+            }
+
+            // 2. Movimento Horizontal
+            const currentSpeed = isRunning ? 8.0 : 4.0; // Corre ao segurar Shift/R1
+            let moveDir = new THREE.Vector3();
+            const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+            const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+
+            if(keys['w'] || keys['arrowup']) moveDir.add(forward);
+            if(keys['s'] || keys['arrowdown']) moveDir.sub(forward);
+            if(keys['d'] || keys['arrowright']) moveDir.add(right);
+            if(keys['a'] || keys['arrowleft']) moveDir.sub(right);
+
+            if(joystickActive) { moveDir.addScaledVector(forward, -joystickVector.y); moveDir.addScaledVector(right, joystickVector.x); }
+
+            if(moveDir.lengthSq() > 0) {
+                moveDir.normalize().multiplyScalar(currentSpeed * dt);
+                
+                // Testa colisão X
+                let testPos = player.position.clone(); testPos.x += moveDir.x;
+                if(!checkCollision(testPos)) player.position.x = testPos.x;
+                
+                // Testa colisão Z
+                testPos = player.position.clone(); testPos.z += moveDir.z;
+                if(!checkCollision(testPos)) player.position.z = testPos.z;
+            }
+
+            camera.position.copy(player.position);
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = player.yaw;
+            camera.rotation.x = player.pitch;
+        }
+
+        function checkInteraction() {
+            if(isPaused || isDriving) return;
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera); raycaster.far = 3.5;
+            const meshes = interactables.map(i => i.mesh); const intersects = raycaster.intersectObjects(meshes, true);
+            if(intersects.length > 0) {
+                let target = null; let parent = intersects[0].object;
+                while(parent) { target = interactables.find(i => i.mesh === parent); if(target) break; parent = parent.parent; }
+                if(target) {
+                    currentInteractable = target; interactionPrompt.style.display = 'block'; interactBtn.style.display = 'flex';
+                    if(target.type === 'arcade') { interactionPrompt.innerText = `JOGAR ${target.name} (CUSTA 1 MOEDA)`; interactionPrompt.style.color = "#ffd700"; } 
+                    else if(target.type === 'vespa') { interactionPrompt.innerText = `ENTRAR NA MOTO`; interactionPrompt.style.color = "#05d9e8"; }
+                    return;
+                }
+            }
+            currentInteractable = null; interactionPrompt.style.display = 'none'; interactBtn.style.display = 'none';
+        }
+
+        function toggleVespa() {
+            if(isDriving) {
+                isDriving = false;
+                const right = new THREE.Vector3(1, 0, 0).applyEuler(vespaPivot.rotation);
+                player.position.copy(vespaPivot.position).add(right.multiplyScalar(1.5));
+                const pRay = new THREE.Raycaster(); pRay.set(new THREE.Vector3(player.position.x, player.position.y + 2.0, player.position.z), new THREE.Vector3(0, -1, 0));
+                const pIntersects = pRay.intersectObjects(groundMeshes);
+                if (pIntersects.length > 0) player.position.y = pIntersects[0].point.y + 1.6; else player.position.y = 1.6;
+                player.velocityY = 0;
+                player.yaw = vespaPivot.rotation.y;
+                interactionPrompt.style.display = 'none'; interactBtn.style.display = 'none'; currentInteractable = null; vespaSpeed = 0; lookYaw = 0; lookPitch = 0; 
+                document.getElementById('vespaControls').style.display = 'none';
+                if (!gamepadIndex) { document.getElementById('joystickArea').style.display = 'block'; document.getElementById('btnJump').style.display = 'flex'; document.getElementById('btnRun').style.display = 'flex'; } 
+            } else {
+                isDriving = true; vespaSpeed = 0; lookYaw = 0; lookPitch = 0;
+                interactionPrompt.style.display = 'none'; interactBtn.style.display = 'none';
+                document.getElementById('vespaControls').style.display = 'block';
+                document.getElementById('joystickArea').style.display = 'none'; document.getElementById('btnJump').style.display = 'none'; document.getElementById('btnRun').style.display = 'none';
+            }
+        }
+
+        function executeInteraction() {
+            if(!currentInteractable) return;
+            if(currentInteractable.type === 'arcade') {
+                if (coins > 0) {
+                    coins--; updateCoinUI(); saveGame(); 
+                    interactionPrompt.innerText = "CARREGANDO JOGO...";
+                    const frame = document.getElementById('gameFrame'); frame.src = currentInteractable.url; frame.style.display = 'block';
+                } else {
+                    interactionPrompt.innerText = "MOEDAS INSUFICIENTES!"; interactionPrompt.style.color = "#ff2a6d";
+                    setTimeout(() => { if(currentInteractable && currentInteractable.type === 'arcade') { interactionPrompt.innerText = `JOGAR ${currentInteractable.name} (CUSTA 1 MOEDA)`; interactionPrompt.style.color = "#ffd700"; } }, 2000);
+                }
+                return;
+            }
+            if(currentInteractable.type === 'vespa') { toggleVespa(); }
+        }
+
+        // ========================================================
+        // ÁUDIO
+        // ========================================================
+        let audioCtx, hornBuffer = null;
+        function initAudio() {
+            if(audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.value = 60; gain.gain.value = 0.02; osc.connect(gain).connect(audioCtx.destination); osc.start();
+                fetch("https://raw.githubusercontent.com/wmattos830-hash/locadora90s/refs/heads/main/horn.wav")
+                    .then(response => response.arrayBuffer()).then(arrayBuffer => audioCtx.decodeAudioData(arrayBuffer)).then(audioBuffer => { hornBuffer = audioBuffer; }).catch(e => console.error("Erro ao carregar buzina:", e));
+            } catch(e) { console.error("Audio init failed", e); }
+        }
+        function playHorn() { if(!audioCtx || !hornBuffer) return; const source = audioCtx.createBufferSource(); source.buffer = hornBuffer; source.connect(audioCtx.destination); source.start(); }
+
+        // ========================================================
+        // EVENTOS (Teclado, Mouse, Touch e Botões)
+        // ========================================================
+        function setupEvents() {
+            window.addEventListener('keydown', (e) => { 
+                if(isPaused) return;
+                keys[e.key.toLowerCase()] = true; 
+                if(e.key === 'Shift') isRunning = true; // Shift para correr
+                if(e.code === 'Space') { if (!isDriving && player.isGrounded) player.velocityY = 9.0; } // Pulo espaço
+                if(e.key.toLowerCase() === 'e') { if(isDriving) toggleVespa(); else executeInteraction(); }
+            });
+            window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; if(e.key === 'Shift') isRunning = false; });
+
+            const canvas = renderer.domElement;
+            canvas.addEventListener('click', () => { if(document.pointerLockElement !== canvas && !isDriving) canvas.requestPointerLock(); });
+
+            document.addEventListener('mousemove', (e) => {
+                if(document.pointerLockElement === canvas && !isDriving) {
+                    player.yaw -= e.movementX * 0.002; player.pitch -= e.movementY * 0.002;
+                    player.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, player.pitch));
+                }
+            });
+
+            canvas.addEventListener('touchstart', (e) => {
+                initAudio();
+                if(isDriving) { for(let touch of e.changedTouches) { if(touch.target === canvas && touch.clientX > window.innerWidth / 2 && touchLookId === null) { touchLookId = touch.identifier; lastTouchX = touch.clientX; lastTouchY = touch.clientY; } } return; }
+                for(let touch of e.changedTouches) { if(touch.clientX > window.innerWidth / 2 && touchLookId === null) { touchLookId = touch.identifier; lastTouchX = touch.clientX; lastTouchY = touch.clientY; } }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if(isDriving) { if(touchLookId !== null) { for(let touch of e.changedTouches) { if(touch.identifier === touchLookId) { const dx = touch.clientX - lastTouchX; const dy = touch.clientY - lastTouchY; lookYaw -= dx * 0.005; lookPitch -= dy * 0.005; lookYaw = Math.max(-Math.PI/2, Math.min(Math.PI/2, lookYaw)); lookPitch = Math.max(-0.6, Math.min(0.6, lookPitch)); lastTouchX = touch.clientX; lastTouchY = touch.clientY; } } } return; }
+                for(let touch of e.changedTouches) { if(touch.identifier === touchLookId) { const dx = touch.clientX - lastTouchX; const dy = touch.clientY - lastTouchY; player.yaw -= dx * 0.005; player.pitch -= dy * 0.005; player.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, player.pitch)); lastTouchX = touch.clientX; lastTouchY = touch.clientY; } }
+            }, { passive: true });
+
+            canvas.addEventListener('touchend', (e) => { for(let touch of e.changedTouches) { if(touch.identifier === touchLookId) touchLookId = null; } });
+
+            const joyArea = document.getElementById('joystickArea');
+            const joyKnob = document.getElementById('joystickKnob');
+            joyArea.addEventListener('touchstart', (e) => { e.preventDefault(); joystickActive = true; initAudio(); });
+            joyArea.addEventListener('touchmove', (e) => {
+                e.preventDefault(); const touch = e.touches[0]; const rect = joyArea.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2; const centerY = rect.top + rect.height / 2;
+                let dx = touch.clientX - centerX; let dy = touch.clientY - centerY; const dist = Math.sqrt(dx*dx + dy*dy); const maxDist = rect.width / 2;
+                if(dist > maxDist) { dx = (dx/dist) * maxDist; dy = (dy/dist) * maxDist; }
+                joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; joystickVector.x = dx / maxDist; joystickVector.y = dy / maxDist;
+            });
+            joyArea.addEventListener('touchend', () => { joystickActive = false; joystickVector = { x: 0, y: 0 }; joyKnob.style.transform = 'translate(-50%, -50%)'; });
+
+            interactBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if(isDriving) toggleVespa(); else executeInteraction(); });
+
+            // Botão de Pulo
+            const btnJump = document.getElementById('btnJump');
+            const triggerJump = () => { if (!isDriving && player.isGrounded) player.velocityY = 9.0; };
+            btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); triggerJump(); });
+            btnJump.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); triggerJump(); });
+
+            // Botão de Correr (Segurar)
+            const btnRun = document.getElementById('btnRun');
+            const setupHoldButton = (btn, onDown, onUp) => {
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); onDown(); });
+                btn.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); onUp(); });
+                btn.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); onDown(); });
+                btn.addEventListener('mouseup', (e) => { e.preventDefault(); e.stopPropagation(); onUp(); });
+            };
+            setupHoldButton(btnRun, () => isRunning = true, () => isRunning = false);
+            setupHoldButton(document.getElementById('btnGas'), () => isAccelerating = true, () => isAccelerating = false);
+            setupHoldButton(document.getElementById('btnBrake'), () => isBraking = true, () => isBraking = false);
+            setupHoldButton(document.getElementById('btnLeft'), () => isSteeringLeft = true, () => isSteeringLeft = false);
+            setupHoldButton(document.getElementById('btnRight'), () => isSteeringRight = true, () => isSteeringRight = false);
+            
+            document.getElementById('btnHorn').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); playHorn(); });
+            document.getElementById('btnHorn').addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); playHorn(); });
+            
+            document.getElementById('btnExitVespa').addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); toggleVespa(); });
+            document.getElementById('btnExitVespa').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleVespa(); });
+
+            document.getElementById('fullscreenBtn').addEventListener('click', () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(err => console.log(err)); else document.exitFullscreen(); });
+
+            window.addEventListener('beforeunload', saveGame);
+            window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.1);
+            if(!isPaused) {
+                updateGamepad(); applyVespaGravity(dt); 
+                if(isDriving) updateVespaControls(dt);
+                else { updatePlayer(dt); updateNPCs(dt); checkInteraction(); }
+            }
+            renderer.render(scene, camera);
+        }
+
+        init();
+        const loadingScreen = document.getElementById('loadingScreen'); loadingScreen.style.opacity = '0';
+        setTimeout(() => { loadingScreen.style.display = 'none'; }, 1000);
+
+    </script>
+</body>
+</html>
